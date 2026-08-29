@@ -102,34 +102,98 @@ df_v = fuzzymatch(tab_v)
 p_c = tab_c.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
 p_v = tab_v.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
 
-# #result = df.groupby('Empresa', as_index=False)['Vlr NF'].sum()
-#print(result)
-
-
-
- 
-# Arquivo
-with pd.ExcelWriter('saida.xlsx') as writer:
-    # Formatação monetária
+with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
     workbook = writer.book
-    moeda = workbook.add_format({'num_format': 'R$ #,##0.00'})
 
-    df = df[['Dt. Emissão', 'Operação', 'Mercadoria', 'Tomador',
-                     'Empresa', 'Valor Frete', 'Vlr NF']]
-    df.to_excel(writer, sheet_name='Base', index=False)
-    worksheet = writer.sheets['Base']
-    worksheet.set_column('A:B', 15)
-    worksheet.set_column('C:C', 20)
-    worksheet.set_column('D:D', 30)
-    worksheet.set_column('E:E', 15, moeda)
-    worksheet.set_column('F:F', 15, moeda)
+    # Formatação monetária
+    moeda = workbook.add_format({"num_format": "R$ #,##0.00"})
 
-    p_c.to_excel(writer, sheet_name='Combustível')
-    worksheet = writer.sheets['Combustível']
-    worksheet.set_column('A:A', 30)
-    worksheet.set_column('B:B', 15, moeda)
+    # -------------------------------------------------------------
+    # 1. ABA: Base
+    # -------------------------------------------------------------
+    df = df[
+        [
+            "Dt. Emissão",
+            "Operação",
+            "Mercadoria",
+            "Tomador",
+            "Valor Frete",
+            "Vlr NF",
+        ]
+    ]
+    df.to_excel(writer, sheet_name="Base", index=False)
+    worksheet = writer.sheets["Base"]
 
-    p_v.to_excel(writer, sheet_name='Vegetal')
-    worksheet = writer.sheets['Vegetal']
-    worksheet.set_column('A:A', 30)
-    worksheet.set_column('B:B', 15, moeda)
+    # Define o tamanho da tabela (linhas e colunas) dinamicamente
+    # +1 na linha por causa do cabeçalho / -1 na coluna porque começa em 0
+    max_row_base = len(df)
+    max_col_base = len(df.columns) - 1
+
+    # Cria a tabela com linhas alternadas e cabeçalho em negrito automaticamente
+    worksheet.add_table(
+        0,
+        0,
+        max_row_base,
+        max_col_base,
+        {
+            "columns": [{"header": col} for col in df.columns],
+            "style": "Table Style Light 9",  # Estilo padrão do Excel (azul claro listrado)
+        },
+    )
+
+    # Configuração de colunas (Formatos monetários reaplicados após a tabela)
+    worksheet.set_column("A:B", 15)
+    worksheet.set_column("C:C", 20)
+    worksheet.set_column("D:D", 30)
+    worksheet.set_column("E:E", 15, moeda)
+    worksheet.set_column("F:F", 15, moeda)
+    worksheet.set_column("G:G", 15, moeda)  # Adicionado G para a última coluna 'Vlr NF'
+
+    # -------------------------------------------------------------
+    # 2. ABA: Combustível
+    # -------------------------------------------------------------
+    p_c.to_excel(writer, sheet_name="Combustível")
+    worksheet = writer.sheets["Combustível"]
+
+    # Como o index foi exportado, precisamos resetar o index para ler as colunas corretamente no add_table
+    p_c_reset = p_c.reset_index()
+    max_row_c = len(p_c_reset)
+    max_col_c = len(p_c_reset.columns) - 1
+
+    worksheet.add_table(
+        0,
+        0,
+        max_row_c,
+        max_col_c,
+        {
+            "columns": [{"header": col} for col in p_c_reset.columns],
+            "style": "Table Style Light 9",
+        },
+    )
+
+    worksheet.set_column("A:A", 30)
+    worksheet.set_column("B:B", 15, moeda)
+
+    # -------------------------------------------------------------
+    # 3. ABA: Vegetal
+    # -------------------------------------------------------------
+    p_v.to_excel(writer, sheet_name="Vegetal")
+    worksheet = writer.sheets["Vegetal"]
+
+    p_v_reset = p_v.reset_index()
+    max_row_v = len(p_v_reset)
+    max_col_v = len(p_v_reset.columns) - 1
+
+    worksheet.add_table(
+        0,
+        0,
+        max_row_v,
+        max_col_v,
+        {
+            "columns": [{"header": col} for col in p_v_reset.columns],
+            "style": "Table Style Light 9",
+        },
+    )
+
+    worksheet.set_column("A:A", 30)
+    worksheet.set_column("B:B", 15, moeda)
