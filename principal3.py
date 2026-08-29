@@ -1,4 +1,3 @@
-# Criando a coLuna 'EM TRÂNSITO'
 import pandas as pd
 from pandas.io.formats import excel
 import numpy as np
@@ -59,7 +58,6 @@ def limpeza(df, planilha = 'transito'):
         df['Pagar'] = (df['Pagar'].str.replace('.', '').str.replace(',', '.')
                             .astype(float))
 
-
     return df
 
 
@@ -99,15 +97,17 @@ def fuzzymatch(df, similaridade = 87):
     return df
 
 
-df = pd.read_excel('transito.xlsx', sheet_name='ReportXML', header=9)
-df = limpeza(df)
-print(sum(df['Vlr NF']), '\n', sum(df['Valor Frete']))
+df_t = pd.read_excel('transito.xlsx', sheet_name='ReportXML', header=9)
+des = pd.read_excel('descarregados_cnpj.xlsx', header = 8)
+
+df_t = limpeza(df_t)
+print(sum(df_t['Vlr NF']), '\n', sum(df_t['Valor Frete']))
 
 #with open('saida.csv', 'w') as f:
-#    df.to_csv(f, index=False, sep=';', decimal=',', encoding='utf-8')
+#    df_t.to_csv(f, index=False, sep=';', decimal=',', encoding='utf-8')
 
-tab_c = df[df['Operação'] == 'COMBUSTIVEL']
-tab_v = df[df['Operação'] == 'VEGETAL']
+tab_c = df_t[df_t['Operação'] == 'COMBUSTIVEL']
+tab_v = df_t[df_t['Operação'] == 'VEGETAL']
 
 df_c = fuzzymatch(tab_c)
 df_v = fuzzymatch(tab_v)
@@ -132,7 +132,7 @@ with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
     # -------------------------------------------------------------
     # 1. ABA: Base
     # -------------------------------------------------------------
-    df = df[
+    df_t = df_t[
         [
             "Dt. Emissão",
             "Operação",
@@ -144,11 +144,11 @@ with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
     ]
 
     # ATENÇÃO: Enviamos sem cabeçalho (header=False) porque o add_table vai criar o dele
-    df.to_excel(writer, sheet_name="Base", index=False, startrow=1, header=False)
+    df_t.to_excel(writer, sheet_name="Base", index=False, startrow=1, header=False)
     worksheet = writer.sheets["Base"]
 
-    max_row_base = len(df) + 1  # +1 por causa da linha de cabeçalho
-    max_col_base = len(df.columns) - 1
+    max_row_base = len(df_t) + 1  # +1 por causa da linha de cabeçalho
+    max_col_base = len(df_t.columns) - 1
 
     # Cria a tabela com cabeçalho em negrito, listras e LINHA DE TOTAL
     worksheet.add_table(
