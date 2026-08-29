@@ -39,7 +39,8 @@ def limpeza(df):
                         .astype(float))
 
     # Classificação de mercadorias em COMBUSTIVEL e VEGETAL
-    combustiveis = ['ALCOOL', 'BIODIESEL', 'ETANOL', 'GASOLINA']
+    combustiveis = ['ALCOOL', 'BIODIESEL', 'ETANOL', 'GASOLINA', 'ONU1170',
+                    'ONU 1170']
     padrao = '|'.join(combustiveis)
     df['Operação'] = np.where(df['Mercadoria'].str.contains(padrao, na=False),
                         'COMBUSTIVEL', 'VEGETAL')
@@ -87,6 +88,9 @@ df = pd.read_excel('transito.xlsx', sheet_name='ReportXML', header=9)
 df = limpeza(df)
 print(sum(df['Vlr NF']), '\n', sum(df['Valor Frete']))
 
+#with open('saida.csv', 'w') as f:
+#    df.to_csv(f, index=False, sep=';', decimal=',', encoding='utf-8')
+
 tab_c = df[df['Operação'] == 'COMBUSTIVEL']
 tab_v = df[df['Operação'] == 'VEGETAL']
 
@@ -95,9 +99,9 @@ df_v = fuzzymatch(tab_v)
 
 # Planilhas finais
 p_c = tab_c.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
-p_c.rename(columns={'Vlr NF': 'EM TRANSITO'}, inplace=True)
+p_c.rename(columns={'Vlr NF': 'Em Transito'}, inplace=True)
 p_v = tab_v.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
-p_v.rename(columns={'Vlr NF': 'EM TRANSITO'}, inplace=True)
+p_v.rename(columns={'Vlr NF': 'Em Transito'}, inplace=True)
 
 # Remove a formatação padrão do Pandas para não conflitar com o estilo do Excel
 excel.ExcelFormatter.header_style = None
