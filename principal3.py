@@ -19,31 +19,46 @@ def normalizar(s):
     return s.str.strip()
 
 
-def limpeza(df):
+def limpeza(df, planilha = 'transito'):
     """
     Limpeza e pré-processamento do DataFrame.
     """
-    # Descarta linhas e colunas com menos de 5 valores não nulos.
-    df = df.dropna(thresh=6)
-    df = df.dropna(axis=1, thresh=5)
+    if planilha == 'transito':
+        # Descarta linhas e colunas com menos de 5 valores não nulos.
+        df = df.dropna(thresh=6)
+        df = df.dropna(axis=1, thresh=5)
 
-    df = df[df["Mercadoria"] != "Mercadoria"]    # Exclusão de linhas com nomes da coluna
+        df = df[df["Mercadoria"] != "Mercadoria"]    # Exclusão de linhas com nomes da coluna
 
-    df['Mercadoria'] = df['Mercadoria'].str.upper()   # Maiúsculas
-    df['Tomador'] = df['Tomador'].str.upper()
+        df['Mercadoria'] = df['Mercadoria'].str.upper()   # Maiúsculas
+        df['Tomador'] = df['Tomador'].str.upper()
 
-    # Conversão para numérico
-    df['Vlr NF'] = (df['Vlr NF'].str.replace('.', '').str.replace(',', '.')
-                    .astype(float))
-    df['Valor Frete'] = (df['Valor Frete'].str.replace('.', '').str.replace(',', '.')
+        # Conversão para numérico
+        df['Vlr NF'] = (df['Vlr NF'].str.replace('.', '').str.replace(',', '.')
                         .astype(float))
+        df['Valor Frete'] = (df['Valor Frete'].str.replace('.', '').str.replace(',', '.')
+                            .astype(float))
 
-    # Classificação de mercadorias em COMBUSTIVEL e VEGETAL
-    combustiveis = ['ALCOOL', 'BIODIESEL', 'ETANOL', 'GASOLINA', 'ONU1170',
-                    'ONU 1170']
-    padrao = '|'.join(combustiveis)
-    df['Operação'] = np.where(df['Mercadoria'].str.contains(padrao, na=False),
-                        'COMBUSTIVEL', 'VEGETAL')
+        # Classificação de mercadorias em COMBUSTIVEL e VEGETAL
+        combustiveis = ['ALCOOL', 'BIODIESEL', 'ETANOL', 'GASOLINA', 'ONU1170',
+                        'ONU 1170']
+        padrao = '|'.join(combustiveis)
+        df['Operação'] = np.where(df['Mercadoria'].str.contains(padrao, na=False),
+                            'COMBUSTIVEL', 'VEGETAL')
+
+    else:
+        df = df.dropna(axis=1, thresh=5) # Colunas
+        df = df.dropna()   # Linhas
+        df = df.rename(columns = {'Unnamed: 2':'Empresa', 'Unnamed: 18':'Qtd'})
+
+        df['Empresa'] = df['Empresa'].str.replace('Razão Social : ', '')
+
+        # Conversão para numérico
+        df['Receber'] = (df['Receber'].str.replace('.', '').str.replace(',', '.')
+                        .astype(float))
+        df['Pagar'] = (df['Pagar'].str.replace('.', '').str.replace(',', '.')
+                            .astype(float))
+
 
     return df
 

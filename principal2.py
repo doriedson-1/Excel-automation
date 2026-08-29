@@ -1,4 +1,4 @@
-# Coluna Descarregados
+# Coluna Descarregados (DESATIVADA)
 import pandas as pd
 import numpy as np
 import openpyxl
