@@ -1,5 +1,6 @@
-# Criando a couna 'EM TRÂNSITO'
+# Criando a coLuna 'EM TRÂNSITO'
 import pandas as pd
+from pandas.io.formats import excel
 import numpy as np
 import openpyxl
 import xlsxwriter
@@ -92,21 +93,22 @@ tab_v = df[df['Operação'] == 'VEGETAL']
 df_c = fuzzymatch(tab_c)
 df_v = fuzzymatch(tab_v)
 
-#(df.head(10))
-# with open ('saida.txt', 'w') as f:
-#     df = df[['Dt. Emissão', 'Operação',  'Tomador',
-#              'Empresa', 'Valor Frete', 'Vlr NF']]
-#     f.write(df.to_string())
-
 # Planilhas finais
 p_c = tab_c.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
+p_c.rename(columns={'Vlr NF': 'EM TRANSITO'}, inplace=True)
 p_v = tab_v.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
+p_v.rename(columns={'Vlr NF': 'EM TRANSITO'}, inplace=True)
 
+# Remove a formatação padrão do Pandas para não conflitar com o estilo do Excel
+excel.ExcelFormatter.header_style = None
+
+# Arquivo
 with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
     workbook = writer.book
 
-    # Formatação monetária
+    # Formatação monetária (para as colunas normais e para a linha de total)
     moeda = workbook.add_format({"num_format": "R$ #,##0.00"})
+    moeda_total = workbook.add_format({"num_format": "R$ #,##0.00", "bold": True})
 
     # -------------------------------------------------------------
     # 1. ABA: Base
@@ -121,41 +123,53 @@ with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
             "Vlr NF",
         ]
     ]
-    df.to_excel(writer, sheet_name="Base", index=False)
+
+    # ATENÇÃO: Enviamos sem cabeçalho (header=False) porque o add_table vai criar o dele
+    df.to_excel(writer, sheet_name="Base", index=False, startrow=1, header=False)
     worksheet = writer.sheets["Base"]
 
-    # Define o tamanho da tabela (linhas e colunas) dinamicamente
-    # +1 na linha por causa do cabeçalho / -1 na coluna porque começa em 0
-    max_row_base = len(df)
+    max_row_base = len(df) + 1  # +1 por causa da linha de cabeçalho
     max_col_base = len(df.columns) - 1
 
-    # Cria a tabela com linhas alternadas e cabeçalho em negrito automaticamente
+    # Cria a tabela com cabeçalho em negrito, listras e LINHA DE TOTAL
     worksheet.add_table(
         0,
         0,
         max_row_base,
         max_col_base,
         {
-            "columns": [{"header": col} for col in df.columns],
-            "style": "Table Style Light 9",  # Estilo padrão do Excel (azul claro listrado)
+            "columns": [
+                {"header": "Dt. Emissão", "total_string": "Total"},
+                {"header": "Operação"},
+                {"header": "Mercadoria"},
+                {"header": "Tomador"},
+                {"header": "Valor Frete", "total_function": "sum",
+                 "format": moeda},
+                {"header": "Vlr NF", "total_function": "sum", "format": moeda},
+            ],
+            "total_row": True,  # Ativa a linha de totais no fim da tabela
+            "style": "Table Style Light 9",
         },
     )
 
-    # Configuração de colunas (Formatos monetários reaplicados após a tabela)
+    # Configuração de colunas e larguras
     worksheet.set_column("A:B", 15)
     worksheet.set_column("C:C", 20)
     worksheet.set_column("D:D", 30)
-    worksheet.set_column("E:E", 15, moeda)
-    worksheet.set_column("F:F", 15, moeda)
-    worksheet.set_column("G:G", 15, moeda)  # Adicionado G para a última coluna 'Vlr NF'
+    worksheet.set_column("E:F", 15, moeda)
+
+    # Aplica negrito apenas nas células de total lá embaixo
+    worksheet.write(max_row_base, 4, f"=SUM(E2:E{max_row_base})", moeda_total)
+    worksheet.write(max_row_base, 5, f"=SUM(F2:F{max_row_base})", moeda_total)
 
     # -------------------------------------------------------------
-    # 2. ABA: Combustível
+    # 2. ABA: Combustível (Ajustada sem conflito de cor)
     # -------------------------------------------------------------
-    p_c.to_excel(writer, sheet_name="Combustível")
+    p_c.to_excel(
+        writer, sheet_name="Combustível", startrow=1, header=False
+    )  # Sem index=False pois você usa o index aqui
     worksheet = writer.sheets["Combustível"]
 
-    # Como o index foi exportado, precisamos resetar o index para ler as colunas corretamente no add_table
     p_c_reset = p_c.reset_index()
     max_row_c = len(p_c_reset)
     max_col_c = len(p_c_reset.columns) - 1
@@ -170,14 +184,13 @@ with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
             "style": "Table Style Light 9",
         },
     )
-
     worksheet.set_column("A:A", 30)
     worksheet.set_column("B:B", 15, moeda)
 
     # -------------------------------------------------------------
-    # 3. ABA: Vegetal
+    # 3. ABA: Vegetal (Ajustada sem conflito de cor)
     # -------------------------------------------------------------
-    p_v.to_excel(writer, sheet_name="Vegetal")
+    p_v.to_excel(writer, sheet_name="Vegetal", startrow=1, header=False)
     worksheet = writer.sheets["Vegetal"]
 
     p_v_reset = p_v.reset_index()
@@ -194,6 +207,5 @@ with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
             "style": "Table Style Light 9",
         },
     )
-
     worksheet.set_column("A:A", 30)
     worksheet.set_column("B:B", 15, moeda)
