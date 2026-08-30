@@ -387,9 +387,13 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
         p_tra.index.name = "Empresa_Padronizada"
 
     # 4. Une as duas visões (Outer Join) e preenche valores ausentes com 0.0
-    resumo = pd.merge(
-        p_des, p_tra, on="Empresa_Padronizada", how="outer"
-    ).fillna(0.0)
+    resumo = pd.merge(p_des, p_tra, on="Empresa_Padronizada", how="outer")
+
+    # Preenche os valores ausentes com 0.0
+    resumo = resumo.fillna(0.0).infer_objects(copy=False)
+    # resumo = pd.merge(
+    #     p_des, p_tra, on="Empresa_Padronizada", how="outer"
+    # ).fillna(0.0)
     resumo = resumo.reset_index().rename(
         columns={"Empresa_Padronizada": "Empresa"}
     )
@@ -403,6 +407,28 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
 p_c = gerar_pivot_categoria(des, df_t, "COMBUSTIVEL")
 p_v = gerar_pivot_categoria(des, df_t, "VEGETAL")
 p_o = gerar_pivot_categoria(des, df_t, "OUTROS")
+
+# ==============================================================================
+# APLICAÇÃO DA NOVA FUNÇÃO FUZZY NOS DADOS CONSOLIDADOS
+# ==============================================================================
+# 1. Unifica empresas parecidas em cada pivot
+p_c = fuzzymatch_consolidação(p_c, col_empresa="Empresa", similaridade_corte=85)
+p_v = fuzzymatch_consolidação(p_v, col_empresa="Empresa", similaridade_corte=85)
+p_o = fuzzymatch_consolidação(p_o, col_empresa="Empresa", similaridade_corte=85)
+
+# 2. Reagrupa os valores somando 'Descarregados' e 'Em Trânsito' após a unificação
+p_c = (
+    p_c.groupby("Empresa", as_index=False)
+    .agg({"Descarregados": "sum", "Em Trânsito": "sum"})
+)
+p_v = (
+    p_v.groupby("Empresa", as_index=False)
+    .agg({"Descarregados": "sum", "Em Trânsito": "sum"})
+)
+p_o = (
+    p_o.groupby("Empresa", as_index=False)
+    .agg({"Descarregados": "sum", "Em Trânsito": "sum"})
+)
 
 # ==============================================================================
 # GRAVAÇÃO NA PLANILHA FINAL VIA XLSXWRITER
@@ -514,7 +540,7 @@ with pd.ExcelWriter("FINAL.xlsx", engine="xlsxwriter") as writer:
             )
 
             # Formatações de largura e estilo
-            ws.set_column("A:A", 40)
+            ws.set_column("A:A", 60)
             ws.set_column("B:C", 18, moeda)
 
             # Fórmulas da linha de total
@@ -523,124 +549,3 @@ with pd.ExcelWriter("FINAL.xlsx", engine="xlsxwriter") as writer:
         else:
             # Caso a aba esteja vazia na execução
             ws.write(0, 0, "Nenhum registro encontrado para esta categoria.")
-
-
-# tran_c = df_t[df_t['Operação'] == 'COMBUSTIVEL']
-# tran_v = df_t[df_t['Operação'] == 'VEGETAL']
-
-# df_c = fuzzymatch(tran_c)
-# df_v = fuzzymatch(tran_v)
-
-# # Planilhas finais
-# p_c = tran_c.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
-# p_c.rename(columns={'Vlr NF': 'Em Transito'}, inplace=True)
-# p_v = tran_v.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
-# p_v.rename(columns={'Vlr NF': 'Em Transito'}, inplace=True)
-
-# # Arquivo
-# with pd.ExcelWriter("saida.xlsx", engine="xlsxwriter") as writer:
-#     workbook = writer.book
-
-#     # Formatação monetária (para as colunas normais e para a linha de total)
-#     moeda = workbook.add_format({"num_format": "R$ #,##0.00"})
-#     moeda_total = workbook.add_format({"num_format": "R$ #,##0.00", "bold": True})
-
-#     # -------------------------------------------------------------
-#     # 1. ABA: Base
-#     # -------------------------------------------------------------
-#     df_t = df_t[
-#         [
-#             "Dt. Emissão",
-#             "Operação",
-#             "Mercadoria",
-#             "Tomador",
-#             "Valor Frete",
-#             "Vlr NF",
-#         ]
-#     ]
-
-#     # ATENÇÃO: Enviamos sem cabeçalho (header=False) porque o add_table vai criar o dele
-#     df_t.to_excel(writer, sheet_name="Base", index=False, startrow=1, header=False)
-#     worksheet = writer.sheets["Base"]
-
-#     max_row_base = len(df_t) + 1  # +1 por causa da linha de cabeçalho
-#     max_col_base = len(df_t.columns) - 1
-
-#     # Cria a tabela com cabeçalho em negrito, listras e LINHA DE TOTAL
-#     worksheet.add_table(
-#         0,
-#         0,
-#         max_row_base,
-#         max_col_base,
-#         {
-#             "columns": [
-#                 {"header": "Dt. Emissão", "total_string": "Total"},
-#                 {"header": "Operação"},
-#                 {"header": "Mercadoria"},
-#                 {"header": "Tomador"},
-#                 {"header": "Valor Frete", "total_function": "sum",
-#                  "format": moeda},
-#                 {"header": "Vlr NF", "total_function": "sum", "format": moeda},
-#             ],
-#             "total_row": True,  # Ativa a linha de totais no fim da tabela
-#             "style": "Table Style Light 9",
-#         },
-#     )
-
-#     # Configuração de colunas e larguras
-#     worksheet.set_column("A:B", 15)
-#     worksheet.set_column("C:C", 20)
-#     worksheet.set_column("D:D", 30)
-#     worksheet.set_column("E:F", 15, moeda)
-
-#     # Aplica negrito apenas nas células de total lá embaixo
-#     worksheet.write(max_row_base, 4, f"=SUM(E2:E{max_row_base})", moeda_total)
-#     worksheet.write(max_row_base, 5, f"=SUM(F2:F{max_row_base})", moeda_total)
-
-#     # -------------------------------------------------------------
-#     # 2. ABA: Combustível (Ajustada sem conflito de cor)
-#     # -------------------------------------------------------------
-#     p_c.to_excel(
-#         writer, sheet_name="Combustível", startrow=1, header=False
-#     )  # Sem index=False pois você usa o index aqui
-#     worksheet = writer.sheets["Combustível"]
-
-#     p_c_reset = p_c.reset_index()
-#     max_row_c = len(p_c_reset)
-#     max_col_c = len(p_c_reset.columns) - 1
-
-#     worksheet.add_table(
-#         0,
-#         0,
-#         max_row_c,
-#         max_col_c,
-#         {
-#             "columns": [{"header": col} for col in p_c_reset.columns],
-#             "style": "Table Style Light 9",
-#         },
-#     )
-#     worksheet.set_column("A:A", 30)
-#     worksheet.set_column("B:B", 15, moeda)
-
-#     # -------------------------------------------------------------
-#     # 3. ABA: Vegetal (Ajustada sem conflito de cor)
-#     # -------------------------------------------------------------
-#     p_v.to_excel(writer, sheet_name="Vegetal", startrow=1, header=False)
-#     worksheet = writer.sheets["Vegetal"]
-
-#     p_v_reset = p_v.reset_index()
-#     max_row_v = len(p_v_reset)
-#     max_col_v = len(p_v_reset.columns) - 1
-
-#     worksheet.add_table(
-#         0,
-#         0,
-#         max_row_v,
-#         max_col_v,
-#         {
-#             "columns": [{"header": col} for col in p_v_reset.columns],
-#             "style": "Table Style Light 9",
-#         },
-#     )
-#     worksheet.set_column("A:A", 30)
-#     worksheet.set_column("B:B", 15, moeda)
