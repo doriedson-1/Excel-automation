@@ -6,9 +6,9 @@ import numpy as np
 import openpyxl
 from openpyxl.worksheet.datavalidation import DataValidation
 import pandas as pd
-
 from rapidfuzz import fuzz, process
 
+pd.set_option('future.no_silent_downcasting', True)
 
 # ------------------------------------------------------------------------------
 # FUNÇÕES DE NORMALIZAÇÃO E LIMPEZA
@@ -299,9 +299,9 @@ def fuzzymatch_consolidação(
 
 
 def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
-    """Gera a tabela consolidada (Descarregados x Em Trânsito) por empresa
+    """ Gera a tabela consolidada (Descarregados x Em Trânsito) por empresa
     para a categoria informada ('VEGETAL', 'COMBUSTIVEL' ou 'OUTROS')."""
-    
+
     sub_des = df_descarregados[df_descarregados["Operação"] == categoria]
     sub_tra = df_transito[df_transito["Operação"] == categoria]
 
@@ -310,7 +310,8 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
             index="Empresa_Padronizada", values="Receber", aggfunc="sum"
         ).rename(columns={"Receber": "Descarregados"})
     else:
-        p_des = pd.DataFrame(columns=["Descarregados"])
+        # Adicionado dtype=float para evitar criar a coluna como object
+        p_des = pd.DataFrame(columns=["Descarregados"], dtype=float)
         p_des.index.name = "Empresa_Padronizada"
 
     if not sub_tra.empty:
@@ -318,11 +319,15 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
             index="Empresa_Padronizada", values="Vlr NF", aggfunc="sum"
         ).rename(columns={"Vlr NF": "Em Trânsito"})
     else:
-        p_tra = pd.DataFrame(columns=["Em Trânsito"])
+        # Adicionado dtype=float para evitar criar a coluna como object
+        p_tra = pd.DataFrame(columns=["Em Trânsito"], dtype=float)
         p_tra.index.name = "Empresa_Padronizada"
 
     resumo = pd.merge(p_des, p_tra, on="Empresa_Padronizada", how="outer")
-    resumo = resumo.fillna(0.0).infer_objects(copy=False)
+    
+    # Com as colunas nascendo como float, o fillna(0.0) não fará downcasting
+    resumo = resumo.fillna(0.0)
+    
     resumo = resumo.reset_index().rename(
         columns={"Empresa_Padronizada": "Empresa"}
     )
