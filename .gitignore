@@ -1,6 +1,7 @@
 .venv
 
 antigos/
+__pycache__/
 
 *.xlsx
 
