@@ -22,7 +22,8 @@ def normalizar(s):
 
 def limpeza(df, planilha = 'transito'):
     """
-    Limpeza e pré-processamento do DataFrame.
+    Limpeza e pré-processamento do DataFrame. Recebe o DataFrame e o nome da
+    planilha, 'transito' (padrão) ou outro.
     """
     if planilha == 'transito':
         # Descarta linhas e colunas com menos de 5 valores não nulos.
@@ -103,8 +104,8 @@ def fuzzymatch(df, similaridade = 87):
 def fuzzymatch_cruzado(df_origem, df_destino, col_origem='Empresa',
                        col_destino='Empresa', similaridade=87):
     """
-    Compara a coluna de empresas do df_destino contra a lista de empresas oficiais do df_origem.
-    
+    Compara a coluna de empresas do df_destino contra a lista de empresas
+    oficiais do df_origem.
     Retorna:
     - df_destino atualizado com a coluna 'Empresa_Padronizada'
     - Um dicionário com os detalhes do match (Score e Origem) para a auditoria do cliente.
@@ -171,14 +172,12 @@ def fuzzymatch_cruzado(df_origem, df_destino, col_origem='Empresa',
     return df_destino, mapping_resultados
 
 
-def gerenciar_classificacao_manual(
-    df_transito, df_descarregados, arquivo_pendentes="Classificar_Pendentes.xlsx"
-):
-    """Atualiza a planilha 'Classificar_Pendentes.xlsx' criando um menu suspenso
-
+def gerenciar_classificacao_manual(df_transito, df_descarregados,
+                                   arquivo_pendentes="Classificar_Pendentes.xlsx"):
+    """
+    Atualiza a planilha 'Classificar_Pendentes.xlsx' criando um menu suspenso
     (validação de dados) na coluna Categoria com as opções: VEGETAL, COMBUSTIVEL
     e OUTROS.
-
     Retorna o dicionário consolidado {Empresa: Categoria}.
     """
     # 1. Categoria base vinda da 'transito.xlsx'
@@ -262,9 +261,8 @@ def gerenciar_classificacao_manual(
 
 
 def normalizar_avancado(texto):
-    """Remove pontuações isoladas, pontuações entre letras (ex: S.A. -> SA)
-
-    e padroniza os espaços.
+    """
+    Remove pontuações isoladas, pontuações entre letras e padroniza os espaços.
     """
     if not isinstance(texto, str):
         return ""
@@ -280,9 +278,9 @@ def normalizar_avancado(texto):
     return texto.strip()
 
 
-def fuzzymatch_consolidação(
-    df, col_empresa="Empresa", similaridade_corte=85):
-    """Aplica o agrupamento fuzzy nos dados consolidados, unificando variações
+def fuzzymatch_consolidação(df, col_empresa="Empresa", similaridade_corte=85):
+    """
+    Aplica o agrupamento fuzzy nos dados consolidados, unificando variações
     sutis de nomes de empresas.
     """
     df_copia = df.copy()
@@ -330,38 +328,9 @@ def fuzzymatch_consolidação(
     return df_copia
 
 
-# Importação
-df_t = pd.read_excel('transito.xlsx', sheet_name='ReportXML', header=9)
-des = pd.read_excel('descarregados_cnpj.xlsx', header = 8)
-
-# Limpeza
-df_t = limpeza(df_t)
-des = limpeza(des, planilha='descarregados')
-print(sum(df_t['Vlr NF']), '\n', sum(df_t['Valor Frete']))
-
-# Padroniza os nomes dentro da própria 'transito' (usando sua fuzzymatch original)
-df_t = fuzzymatch(df_t)
-df_t["Empresa_Padronizada"] = df_t["Tomador"]
-#with open('df_transito.csv', 'w') as f:
-#    df_t.to_csv(f, index=False, sep=';', decimal=',', encoding='utf-8')
-
-des, mapping_resultados = fuzzymatch_cruzado(
-    df_origem=df_t, df_destino=des, col_origem="Empresa", col_destino="Empresa")
-
-# Obtém o dicionário {Empresa: Categoria} e atualiza o arquivo 'Classificar_Pendentes.xlsx'
-mapa_categorias = gerenciar_classificacao_manual(df_t, des)
-
-# Aplica a categoria correspondente em cada linha da 'descarregados'
-des["Operação"] = des["Empresa_Padronizada"].map(mapa_categorias)
-
-# A partir daqui, separação das empresas conforme a coluna 'Operação'
-#des_v = des[des["Operação"] == "VEGETAL"]
-#des_c = des[des["Operação"] == "COMBUSTIVEL"]
-#des_o = des[des["Operação"] == "OUTROS"]
-
 def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
-    """Gera a tabela consolidada (Descarregados x Em Trânsito) por empresa
-
+    """
+    Gera a tabela consolidada (Descarregados x Em Trânsito) por empresa
     para a categoria informada ('VEGETAL', 'COMBUSTIVEL' ou 'OUTROS').
     """
     # 1. Filtra os dataframes pela categoria correspondente
@@ -400,6 +369,30 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
 
     return resumo
 
+# ==============================================================================
+# IMPORTAÇÃO
+# ==============================================================================
+df_t = pd.read_excel('transito.xlsx', sheet_name='ReportXML', header=9)
+des = pd.read_excel('descarregados_cnpj.xlsx', header = 8)
+
+# Limpeza
+df_t = limpeza(df_t)
+des = limpeza(des, planilha='descarregados')
+
+# ==============================================================================
+# PADRONIZAÇÃO DOS DADOS
+# ==============================================================================
+df_t = fuzzymatch(df_t)
+df_t["Empresa_Padronizada"] = df_t["Tomador"]
+
+des, mapping_resultados = fuzzymatch_cruzado(df_origem=df_t, df_destino=des,
+                                             col_origem="Empresa", col_destino="Empresa")
+
+# Obtém o dicionário {Empresa: Categoria} e atualiza o arquivo 'Classificar_Pendentes.xlsx'
+mapa_categorias = gerenciar_classificacao_manual(df_t, des)
+
+# Aplica a categoria correspondente em cada linha da 'descarregados'
+des["Operação"] = des["Empresa_Padronizada"].map(mapa_categorias)
 
 # ==============================================================================
 # CONSOLIDAÇÃO DOS DADOS
