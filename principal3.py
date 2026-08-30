@@ -106,16 +106,16 @@ print(sum(df_t['Vlr NF']), '\n', sum(df_t['Valor Frete']))
 #with open('saida.csv', 'w') as f:
 #    df_t.to_csv(f, index=False, sep=';', decimal=',', encoding='utf-8')
 
-tab_c = df_t[df_t['Operação'] == 'COMBUSTIVEL']
-tab_v = df_t[df_t['Operação'] == 'VEGETAL']
+tran_c = df_t[df_t['Operação'] == 'COMBUSTIVEL']
+tran_v = df_t[df_t['Operação'] == 'VEGETAL']
 
 df_c = fuzzymatch(tab_c)
 df_v = fuzzymatch(tab_v)
 
 # Planilhas finais
-p_c = tab_c.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
+p_c = tran_c.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
 p_c.rename(columns={'Vlr NF': 'Em Transito'}, inplace=True)
-p_v = tab_v.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
+p_v = tran_v.pivot_table(index=['Empresa'], values = ['Vlr NF'], aggfunc='sum')
 p_v.rename(columns={'Vlr NF': 'Em Transito'}, inplace=True)
 
 # Remove a formatação padrão do Pandas para não conflitar com o estilo do Excel

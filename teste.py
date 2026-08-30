@@ -60,7 +60,7 @@ def limpeza(df, planilha = 'transito'):
     return df
 
 
-def fuzzymatch(df, similaridade = 87):
+def fuzzymatch(df, similaridade = 87, coluna_empresa = 'Tomador'):
     """
     Recebe um DataFrame (df) e retorna o mesmo DataFrame com uma nova coluna 'Empresa',
     que contém os nomes aproximados via correspondência fuzzy.
@@ -69,7 +69,7 @@ def fuzzymatch(df, similaridade = 87):
     """
     # Process names from most to least frequent, so the most common
     # spelling becomes the reference and rare typos get attached to it.
-    df['Tomador_norm'] = normalizar(df['Tomador'])
+    df['Tomador_norm'] = normalizar(df[coluna_empresa])
     
     counts = df['Tomador_norm'].value_counts()
     mapping, representatives = {}, []
@@ -105,11 +105,11 @@ print(sum(df_t['Vlr NF']), '\n', sum(df_t['Valor Frete']))
 
 def classificar_descarregados(df):
     """
-    Comparação dos tipos de operação para cada empresa, a partir de
-    'nomes_valores' será feita a classificação das empresas da planilha de 'descarregados_cnpj'.
+    Comparação dos tipos de operação para cada empresa, a partir daqui
+    será feita a classificação das empresas da planilha de 'descarregados_cnpj'.
     Recebe o dataframe originado da planilha 'transito'.
-    Retorna um dataframe com a operação mais feita para cada empresa (não há
-    padronização dos nomes).
+    Retorna um dataframe ('nomes_valores') com a operação mais feita para cada
+    empresa (não há padronização dos nomes).
     """
 
     nomes_valores = (df.pivot_table(index='Tomador', values='Vlr NF',
@@ -125,12 +125,31 @@ def classificar_descarregados(df):
 
 nomes_op = classificar_descarregados(df_t)
 
-final = (des.merge(nomes_op, on='Empresa', how='outer')
-         .drop(['Pagar', 'Qtd'], axis=1))
-print(final)
+des_completo = (des.merge(nomes_op, on='Empresa', how='outer')
+                     .drop(['Pagar', 'Qtd'], axis=1))
+des_completo['Maioria'] = des_completo['Maioria'].fillna('OUTROS')
+df2 = (fuzzymatch(des_completo, coluna_empresa='Empresa')
+       .drop('Tomador_norm', axis=1))
+#lista = df2['Empresa'].unique()
+#print(len(lista))
+
+tabela_des = pd.pivot_table(
+    df2,
+    index='Empresa',
+    columns='Maioria',
+    values='Receber',
+    aggfunc='sum',
+    fill_value=0
+)
+
+descarregados = pd.DataFrame({
+    'Descarregados': tabela_des.sum(axis=1),
+    'Operação': tabela_des.idxmax(axis=1)
+}).reset_index()
 
 #with open('saida.csv', 'w') as f:
 #    df_t.to_csv(f, index=False, sep=';', decimal=',', encoding='utf-8')
 
-tab_c = df_t[df_t['Operação'] == 'COMBUSTIVEL']
-tab_v = df_t[df_t['Operação'] == 'VEGETAL']
+des_c = descarregados[descarregados['Operação'] == 'COMBUSTIVEL']
+des_v = descarregados[descarregados['Operação'] == 'VEGETAL']
+des_o = descarregados[descarregados['Operação'] == 'OUTROS']
