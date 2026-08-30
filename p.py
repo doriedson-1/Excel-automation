@@ -118,9 +118,12 @@ def fuzzymatch_cruzado(
     similaridade=85,
 ):
     referencias_norm = df_origem[col_origem].dropna().unique()
-    mapa_referencias = {
-        normalizar_texto_simples(ref): ref for ref in referencias_norm
-    }
+    mapa_referencias = {}
+    for ref in referencias_norm:
+        chave = normalizar_texto_simples(ref)
+        if chave not in mapa_referencias:
+            mapa_referencias[chave] = ref
+
     chaves_referencia = list(mapa_referencias.keys())
 
     mapping_resultados = {}
@@ -237,6 +240,7 @@ def gerenciar_classificacao_manual(
         ws.column_dimensions["A"].width = 65
         ws.column_dimensions["B"].width = 20
         wb.save(arquivo_pendentes)
+        wb.close()
     except PermissionError:
         print(
             f"\n[ERRO] Feche o arquivo '{arquivo_pendentes}' antes de continuar."
@@ -348,6 +352,12 @@ def main():
         )
         return
 
+    colunas_obrigatorias = ["Mercadoria", "Tomador", "Vlr NF"]
+    faltantes = [col for col in colunas_obrigatorias if col not in df_t.columns]
+    if faltantes:
+        print(f"[ERRO] A planilha 'transito.xlsx' não possui as colunas: {faltantes}")
+        return
+    
     # Limpeza
     df_t = limpeza(df_t)
     des = limpeza(des, planilha="descarregados")
