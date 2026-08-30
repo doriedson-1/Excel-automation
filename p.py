@@ -408,7 +408,9 @@ def main():
         {"Descarregados": "sum", "Em Trânsito": "sum"}
     )
 
-    # Exportação
+    # ==============================================================================
+    # GRAVAÇÃO NA PLANILHA FINAL VIA XLSXWRITER
+    # ==============================================================================
     data_formatada = time.strftime("%d-%m-%Y")
     nome_saida = f"{data_formatada}_final.xlsx"
 
@@ -420,7 +422,9 @@ def main():
                 {"num_format": "R$ #,##0.00", "bold": True}
             )
 
-            # 1. ABA Base
+            # -------------------------------------------------------------
+            # 1. ABA: Base Trânsito
+            # -------------------------------------------------------------
             df_t_base = df_t[
                 [
                     "Dt. Emissão",
@@ -433,12 +437,12 @@ def main():
             ]
             df_t_base.to_excel(
                 writer,
-                sheet_name="Base",
+                sheet_name="Base Trânsito",
                 index=False,
                 startrow=1,
                 header=False,
             )
-            ws_base = writer.sheets["Base"]
+            ws_base = writer.sheets["Base Trânsito"]
             max_row_base = len(df_t_base) + 1
             max_col_base = len(df_t_base.columns) - 1
 
@@ -448,6 +452,7 @@ def main():
                 max_row_base,
                 max_col_base,
                 {
+                    "name": "Tabela_Base_Transito",
                     "columns": [
                         {"header": "Dt. Emissão", "total_string": "Total"},
                         {"header": "Operação"},
@@ -480,14 +485,61 @@ def main():
                 max_row_base, 5, f"=SUM(F2:F{max_row_base})", moeda_total
             )
 
-            # 2. ABAS Resumo
+            # -------------------------------------------------------------
+            # 2. ABA: Base Descarregados
+            # -------------------------------------------------------------
+            # Seleciona as colunas relevantes ou o dataframe 'des' tratado
+            des_base = des.copy()
+            des_base.to_excel(
+                writer,
+                sheet_name="Base Descarregados",
+                index=False,
+                startrow=1,
+                header=False,
+            )
+            ws_des = writer.sheets["Base Descarregados"]
+            max_row_des = len(des_base) + 1
+            max_col_des = len(des_base.columns) - 1
+
+            # Mapeamento automático das colunas para a tabela do Excel
+            colunas_des = []
+            for col_name in des_base.columns:
+                if col_name in ["Receber", "Pagar"]:
+                    colunas_des.append(
+                        {
+                            "header": col_name,
+                            "total_function": "sum",
+                            "format": moeda,
+                        }
+                    )
+                else:
+                    colunas_des.append({"header": col_name})
+
+            ws_des.add_table(
+                0,
+                0,
+                max_row_des,
+                max_col_des,
+                {
+                    "name": "Tabela_Base_Descarregados",
+                    "columns": colunas_des,
+                    "total_row": True,
+                    "style": "Table Style Light 9",
+                },
+            )
+
+            ws_des.set_column("A:Z", 20)  # Ajuste genérico de largura de colunas
+
+            # -------------------------------------------------------------
+            # 3. ABAS: Resumo (Combustível, Vegetal, Outros)
+            # -------------------------------------------------------------
             abas_config = [
-                ("Combustível", p_c),
-                ("Vegetal", p_v),
-                ("Outros", p_o),
+                ("Combustível", p_c, "Tabela_Combustivel"),
+                ("Vegetal", p_v, "Tabela_Vegetal"),
+                ("Outros", p_o, "Tabela_Outros"),
             ]
 
-            for nome_aba, df_pivot in abas_config:
+            for nome_aba, df_pivot, nome_tabela in abas_config:
                 df_pivot.to_excel(
                     writer,
                     sheet_name=nome_aba,
@@ -506,6 +558,7 @@ def main():
                         max_row,
                         max_col,
                         {
+                            "name": nome_tabela,
                             "columns": [
                                 {"header": "Empresa", "total_string": "Total"},
                                 {
