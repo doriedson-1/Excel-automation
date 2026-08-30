@@ -1,8 +1,9 @@
 import os
 import re
+import openpyxl
+import time
 import pandas as pd
 import numpy as np
-import openpyxl
 from openpyxl.worksheet.datavalidation import DataValidation
 import xlsxwriter
 from rapidfuzz import process, fuzz
@@ -426,7 +427,9 @@ p_o = (
 # ==============================================================================
 # GRAVAÇÃO NA PLANILHA FINAL VIA XLSXWRITER
 # ==============================================================================
-with pd.ExcelWriter("FINAL.xlsx", engine="xlsxwriter") as writer:
+x = time.localtime()
+data = f"{x.tm_mday}-{x.tm_mon}-{x.tm_year}"
+with pd.ExcelWriter(f"{data}_final.xlsx", engine="xlsxwriter") as writer:
     workbook = writer.book
 
     # Formatações monetárias
