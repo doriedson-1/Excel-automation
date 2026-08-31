@@ -316,8 +316,8 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
 
     if not sub_tra.empty:
         p_tra = sub_tra.pivot_table(
-            index="Empresa_Padronizada", values="Vlr NF", aggfunc="sum"
-        ).rename(columns={"Vlr NF": "Em Trânsito"})
+            index="Empresa_Padronizada", values="Valor Frete", aggfunc="sum"
+        ).rename(columns={"Valor Frete": "Em Trânsito"})
     else:
         # Adicionado dtype=float para evitar criar a coluna como object
         p_tra = pd.DataFrame(columns=["Em Trânsito"], dtype=float)
