@@ -347,11 +347,11 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
         p_des = pd.DataFrame(columns=["Descarregados"])
         p_des.index.name = "Empresa_Padronizada"
 
-    # 3. Agrupa 'Em Trânsito' por Empresa Padronizada (Somando 'Vlr NF')
+    # 3. Agrupa 'Em Trânsito' por Empresa Padronizada (Somando 'Valor Frete')
     if not sub_tra.empty:
         p_tra = sub_tra.pivot_table(
-            index="Empresa_Padronizada", values="Vlr NF", aggfunc="sum"
-        ).rename(columns={"Vlr NF": "Em Trânsito"})
+            index="Empresa_Padronizada", values="Valor Frete", aggfunc="sum"
+        ).rename(columns={"Valor Frete": "Em Trânsito"})
     else:
         p_tra = pd.DataFrame(columns=["Em Trânsito"])
         p_tra.index.name = "Empresa_Padronizada"
