@@ -340,21 +340,24 @@ def gerar_pivot_categoria(df_descarregados, df_transito, categoria):
 def main():
     print("Iniciando o processamento das planilhas...")
 
+    # 1. Resolução absoluta de diretórios ANTES do try block
+    if getattr(sys, 'frozen', False):
+        diretorio_base = os.path.dirname(sys.executable)
+    else:
+        diretorio_base = os.path.dirname(os.path.abspath(__file__))
+    
+    # Declarando os caminhos das planilhas usando o diretório do executável
+    caminho_transito = os.path.join(diretorio_base, 'transito.xlsx')
+    caminho_descarregados = os.path.join(diretorio_base, 'descarregados_cnpj.xlsx')
+    caminho_pendentes = os.path.join(diretorio_base, "Classificar_Pendentes.xlsx")
+
+    # 2. Uso dos caminhos declarados
     try:
-        if getattr(sys, 'frozen', False):
-            diretorio_base = os.path.dirname(sys.executable)
-        else:
-            diretorio_base = os.path.dirname(os.path.abspath(__file__))
-            caminho_transito = os.path.join(diretorio_base, 'transito.xlsx')
-            caminho_descarregados = os.path.join(diretorio_base,
-                                                 'descarregados_cnpj.xlsx')
         df_t = pd.read_excel(caminho_transito, sheet_name="ReportXML", header=9)
         des = pd.read_excel(caminho_descarregados, header=8)
     except FileNotFoundError as e:
         print(f"\n[ERRO] Arquivo de entrada não encontrado: {e.filename}")
-        print(
-            "Certifique-se de que 'transito.xlsx' e 'descarregados_cnpj.xlsx' estão na mesma pasta."
-        )
+        print(f"Certifique-se de que os arquivos Excel estão na pasta:\n{diretorio_base}")
         return
 
     colunas_obrigatorias = ["Mercadoria", "Tomador", "Vlr NF"]
@@ -369,7 +372,6 @@ def main():
 
     # Padronização de Nomes
     df_t = fuzzymatch(df_t)
-    # CORREÇÃO: Utiliza a coluna 'Empresa' gerada pelo fuzzymatch
     df_t["Empresa_Padronizada"] = df_t["Empresa"]
 
     des, _ = fuzzymatch_cruzado(
@@ -379,7 +381,8 @@ def main():
         col_destino="Empresa",
     )
 
-    mapa_categorias = gerenciar_classificacao_manual(df_t, des)
+    # Passando a variável de caminho para a função de gerenciamento manual
+    mapa_categorias = gerenciar_classificacao_manual(df_t, des, arquivo_pendentes=caminho_pendentes)
     des["Operação"] = des["Empresa_Padronizada"].map(mapa_categorias)
 
     # Consolidação
@@ -412,7 +415,9 @@ def main():
     # GRAVAÇÃO NA PLANILHA FINAL VIA XLSXWRITER
     # ==============================================================================
     data_formatada = time.strftime("%d-%m-%Y")
-    nome_saida = f"{data_formatada}_final.xlsx"
+    
+    # 3. Aplicar também ao arquivo final de saída
+    nome_saida = os.path.join(diretorio_base, f"{data_formatada}_final.xlsx")
 
     try:
         with pd.ExcelWriter(nome_saida, engine="xlsxwriter") as writer:
@@ -488,7 +493,6 @@ def main():
             # -------------------------------------------------------------
             # 2. ABA: Base Descarregados
             # -------------------------------------------------------------
-            # Seleciona as colunas relevantes ou o dataframe 'des' tratado
             des_base = des.copy()
             des_base.to_excel(
                 writer,
@@ -501,7 +505,6 @@ def main():
             max_row_des = len(des_base) + 1
             max_col_des = len(des_base.columns) - 1
 
-            # Mapeamento automático das colunas para a tabela do Excel
             colunas_des = []
             for col_name in des_base.columns:
                 if col_name in ["Receber", "Pagar"]:
@@ -596,7 +599,6 @@ def main():
         print(
             f"\n[ERRO] O arquivo '{nome_saida}' está aberto no Excel. Feche-o e tente novamente."
         )
-
 
 if __name__ == "__main__":
     try:
