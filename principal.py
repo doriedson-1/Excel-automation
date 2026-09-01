@@ -7,6 +7,8 @@ import openpyxl
 from openpyxl.worksheet.datavalidation import DataValidation
 import pandas as pd
 from rapidfuzz import fuzz, process
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 
 pd.set_option('future.no_silent_downcasting', True)
 
@@ -32,16 +34,21 @@ def normalizar(s):
 
 
 def converter_para_float(coluna):
-    """Converte valores com formato de moeda brasileiro (1.000,00) para float
-    com segurança."""
-    if coluna.dtype == "object":
-        return (
-            coluna.astype(str)
-            .str.replace(".", "", regex=False)
-            .str.replace(",", ".", regex=False)
-            .astype(float)
-        )
-    return coluna.astype(float)
+    """Converte valores com formato de moeda brasileiro (1.000,00) para float com segurança,
+    lidando perfeitamente com colunas de tipos mistos."""
+    
+    def limpar_moeda(valor):
+        if pd.isna(valor):
+            return 0.0
+        
+        # Se for texto, remove os pontos de milhar e troca vírgula por ponto
+        if isinstance(valor, str):
+            valor = valor.strip().replace(".", "").replace(",", ".")
+            
+        # Converte para float (funciona tanto para as strings limpas quanto para números pré-existentes)
+        return float(valor)
+
+    return coluna.apply(limpar_moeda)
 
 
 def limpeza(df, planilha="transito"):
