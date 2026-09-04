@@ -20,6 +20,8 @@ def normalizar_texto_simples(texto):
     if not isinstance(texto, str):
         return ""
     texto = texto.lower().strip()
+    # Unifica variações de Sociedade Anônima (S.A., S A, S/A -> SA)
+    texto = re.sub(r"\bS[\.\s\-/]*A\b", "SA", texto)
     texto = re.sub(r"[^\w\s]", "", texto)
     texto = re.sub(r"\s+", " ", texto)
     return texto.strip()
@@ -28,6 +30,8 @@ def normalizar_texto_simples(texto):
 def normalizar(s):
     """Normaliza uma Série de strings do Pandas."""
     s = s.astype(str).str.lower().str.strip()
+    # Unifica variações de Sociedade Anônima em toda a coluna
+    s = s.str.replace(r"\bS[\.\s\-/]*A\b", "SA", regex=True)
     s = s.str.replace(r"[^\w\s]", "", regex=True)
     s = s.str.replace(r"\s+", " ", regex=True)
     return s.str.strip()
@@ -58,7 +62,7 @@ def limpeza(df, planilha="transito"):
         df = df[df["Mercadoria"] != "Mercadoria"]
 
         df["Mercadoria"] = df["Mercadoria"].astype(str).str.upper()
-        df["Tomador"] = df["Tomador"].astype(str).str.upper()
+        df["Tomador"] = df["Tomador"].astype(str).str.upper().str.strip()
 
         df["Vlr NF"] = converter_para_float(df["Vlr NF"])
         df["Valor Frete"] = converter_para_float(df["Valor Frete"])
@@ -86,7 +90,7 @@ def limpeza(df, planilha="transito"):
         df["Empresa"] = df["Empresa"].astype(str).str.replace(
             "Razão Social : ", ""
         )
-        df["Empresa"] = df["Empresa"].str.upper()
+        df["Empresa"] = df["Empresa"].str.upper().str.strip()
 
         df["Receber"] = converter_para_float(df["Receber"])
         df["Pagar"] = converter_para_float(df["Pagar"])
@@ -262,6 +266,8 @@ def normalizar_avancado(texto):
     if not isinstance(texto, str):
         return ""
     texto = texto.upper().strip()
+    # Unifica variações de Sociedade Anônima
+    texto = re.sub(r"\bS[\.\s\-/]*A\b", "SA", texto)
     texto = re.sub(r"[.,;\-/]", " ", texto)
     texto = re.sub(r"\s+", " ", texto)
     return texto.strip()
