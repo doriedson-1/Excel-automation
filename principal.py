@@ -274,7 +274,7 @@ def normalizar_avancado(texto):
 
 
 def fuzzymatch_consolidação(
-    df, col_empresa="Empresa", similaridade_corte=85
+    df, col_empresa="Empresa", similaridade_corte=90
 ):
     """Aplica o agrupamento fuzzy nos dados consolidados, unificando variações
     sutis de nomes de empresas."""
@@ -296,7 +296,7 @@ def fuzzymatch_consolidação(
             best_match, score, _ = process.extractOne(
                 emp_limpa,
                 representantes_limpos,
-                scorer=fuzz.token_set_ratio,
+                scorer=fuzz.token_sort_ratio,    # Usando token_sort_ratio para evitar falsos positivos
             )
             if score >= similaridade_corte:
                 nome_canonico = mapa_limpo_para_original[best_match]
